@@ -3,6 +3,7 @@ import tempfile
 import os
 import shutil
 import configparser
+import json
 from subprocess import check_output, CalledProcessError, call
 from git import Repo
 
@@ -159,17 +160,70 @@ def delete_remote_repo(appName):
 
 
 def local_repo(appName, projectPath):
-    file_list = os.listdir(projectPath)
-    if '.git' in file_list:
-        file_list.remove('.git')
     remote_path = 'https://git-codecommit.us-east-1.amazonaws.com/v1/repos/'+ appName
     repo = Repo.init(projectPath)
-    repo.index.add(file_list)
+    git_add_file(projectPath)
     repo.index.commit("init")
     os.chdir(projectPath)
     command = ['git', 'push', remote_path, '--all']
     result = _exec_cmd(command)
     os.chdir('./')
+
+
+def git_add_file(projectPath):
+    os.chdir(projectPath)
+    command = ['git','add','.']
+    result = _exec_cmd(command)
+    os.chdir('./')
+
+
+def git_commit(projectPath, description='save changes'):
+   repo = Repo(projectPath)
+   repo.index.commit(description)
+
+
+def modify_file(filePath, content, projectPath):
+    try:
+        with open(filePath, 'w') as f:
+	    f.write(content)
+    except:
+        return {'result':-1,'errmsg':'no such file'}
+    git_add_file(projectPath)
+    return {'result':0,'errmsg':''}
+
+
+def rename_file(filePath, newFilePath, projectPath):
+    if not os.path.exists(filePath):
+        return {'result':-1,'errmsg':'no such file or directort'}
+    os.rename(filePath, newFilePath)
+    #git_add_file(projectPath)
+    return {'result':0,'errmsg':''}
+
+
+def create_file(filePath, projectPath, isFolder=False):
+    if os.path.exists(filePath):
+        return {'result':-1,'errmsg':'There has the same name file or directory'}
+    if not isFolder:
+        f = open(filePath,'w')
+        f.close()
+    else:
+        os.makedirs(filePath)
+
+    git_add_file(projectPath)
+    return {'result':0,'errmsg':''}
+
+
+def delete_file(filePath, projectPath):
+    if not os.path.exists(filePath):
+        return {'result':-1,'errmsg':'no such file'}
+    if os.path.isfile(filePath):
+        os.remove(filePath)
+    else:
+        shutil.rmtree(filePath)
+
+    git_add_file(projectPath)
+    return {'result':0,'errmsg':''}
+
 
 
 def init_project(packageName, appName, projectPath, description=''):
@@ -182,16 +236,22 @@ def init_project(packageName, appName, projectPath, description=''):
 def main():
     # projectName = 'android-test-2'
     # build_project('android-build-sdk-base')
-    buildId = 'helloapp:cf89cb11-4b23-40ef-a55b-61b414f2d5e1'
+    buildId = 'helloapp:1ead4d59-3811-4847-a560-6f1eaea040d0'
     packageName = 'com.rexz'
     appName = 'helloapp'
     projectPath = os.path.join('./', appName)
     # print(build_project(appName))
     # init_project(packageName, appName, projectPath)
+    # build_project(appName)
     get_buildlogs(buildId, 1510031877000)
     # install_apk('', '')
     # generate_project(packageName, appName, os.path.join('./', appName))
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    appName = 'helloapp'
+    filePath = './helloapp/test'
+    content = 'qwe\nqwe\nqweeeeee\n'
+    projectPath = os.path.join('./', appName)
+    print(delete_file(filePath, projectPath))
