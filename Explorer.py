@@ -9,6 +9,7 @@ PYTHON_T = 'python'
 
 
 def list_directory_recursive(path):
+    os.chdir(os.path.dirname(__file__))
     tmpDirs = {path: create_dir_data(path, [])}
     for dirname, dirnames, filenames in os.walk(path):
 
@@ -57,7 +58,7 @@ def read_file_content(path):
 
 
 def main():
-    print(read_file_content('../test-android-hello/gradle/wrapper/gradle-wrapper.jar'))
+    list_directory_recursive('../projects/test-android-hello')
 
 if __name__ == '__main__':
     main()

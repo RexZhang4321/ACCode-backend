@@ -55,7 +55,8 @@ def get_buildlogs(projectId, startTime=0):
     projectName, logStreamName = projectId.split(':')
     logGroupName = '/aws/codebuild/' + projectName
     client = boto3.client('logs')
-    logEvents = client.get_log_events(logGroupName=logGroupName, logStreamName=logStreamName, startTime=startTime)
+    logEvents = client.get_log_events(
+        logGroupName=logGroupName, logStreamName=logStreamName, startTime=startTime)
     print(logEvents)
     return logEvents
 
@@ -63,7 +64,8 @@ def get_buildlogs(projectId, startTime=0):
 def install_apk(projectName, apkPath, androidPath=''):
     # download apk from s3
     s3 = boto3.resource('s3')
-    s3.meta.client.download_file(S3_BUCKET, projectName + '/app-debug.apk', 'app-debug.apk')
+    s3.meta.client.download_file(
+        S3_BUCKET, projectName + '/app-debug.apk', 'app-debug.apk')
     installCmd = ['adb', 'install', '-r', 'app-debug.apk']
     result = _exec_cmd(installCmd)
     print(result)
@@ -109,7 +111,22 @@ dependencies {{
 
 def _generate_project_src(packageName, applicationName, projectPath):
     androidBinPath = os.path.join(ANDROID_TOOLS_HOME, 'android')
-    createProjectScript = [androidBinPath, 'create', 'project', '--gradle', '--gradle-version', '3.0.0', '--activity', 'Main', '--package', packageName + '.' + applicationName, '--target', 'android-26', '--path', './tmp']
+    createProjectScript = [
+        androidBinPath,
+        'create',
+        'project',
+        '--gradle',
+        '--gradle-version',
+        '3.0.0',
+        '--activity',
+        'Main',
+        '--package',
+        packageName + '.' + applicationName,
+        '--target',
+        'android-26',
+        '--path',
+        './tmp'
+    ]
     result = _exec_cmd(createProjectScript)
 
 
@@ -118,7 +135,8 @@ def _generate_project_meta(projectPath):
     shutil.copytree('./AndroidTemplateApplication', projectPath)
 
     # copy generated src file to project path
-    shutil.copytree(os.path.join(TEMP_APP_SRC, 'src'), os.path.join(projectPath, 'app', 'src'))
+    shutil.copytree(os.path.join(TEMP_APP_SRC, 'src'),
+                    os.path.join(projectPath, 'app', 'src'))
 
     # delete generated src
     shutil.rmtree(TEMP_APP_SRC)
@@ -160,77 +178,76 @@ def delete_remote_repo(appName):
 
 
 def local_repo(appName, projectPath):
-    remote_path = 'https://git-codecommit.us-east-1.amazonaws.com/v1/repos/'+ appName
+    remote_path = 'https://git-codecommit.us-east-1.amazonaws.com/v1/repos/' + appName
     repo = Repo.init(projectPath)
     git_add_file(projectPath)
     repo.index.commit("init")
     os.chdir(projectPath)
     command = ['git', 'push', remote_path, '--all']
     result = _exec_cmd(command)
-    os.chdir('./')
+    os.chdir(os.path.dirname(__file__))
 
 
 def git_add_file(projectPath):
     os.chdir(projectPath)
-    command = ['git','add','.']
+    command = ['git', 'add', '.']
     result = _exec_cmd(command)
-    os.chdir('./')
+    os.chdir(os.path.dirname(__file__))
 
 
 def git_commit(projectPath, description='save changes'):
-   repo = Repo(projectPath)
-   repo.index.commit(description)
+    repo = Repo(projectPath)
+    repo.index.commit(description)
 
 
 def modify_file(filePath, content, projectPath):
     try:
         with open(filePath, 'w') as f:
-	    f.write(content)
+            f.write(content)
     except:
-        return {'result':-1,'errmsg':'no such file'}
+        return {'result': -1, 'errmsg': 'no such file'}
     git_add_file(projectPath)
-    return {'result':0,'errmsg':''}
+    return {'result': 0, 'errmsg': ''}
 
 
 def rename_file(filePath, newFilePath, projectPath):
     if not os.path.exists(filePath):
-        return {'result':-1,'errmsg':'no such file or directort'}
+        return {'result': -1, 'errmsg': 'no such file or directort'}
     os.rename(filePath, newFilePath)
-    #git_add_file(projectPath)
-    return {'result':0,'errmsg':''}
+    # git_add_file(projectPath)
+    return {'result': 0, 'errmsg': ''}
 
 
 def create_file(filePath, projectPath, isFolder=False):
     if os.path.exists(filePath):
-        return {'result':-1,'errmsg':'There has the same name file or directory'}
+        return {'result': -1, 'errmsg': 'There has the same name file or directory'}
     if not isFolder:
-        f = open(filePath,'w')
-        f.close()
+        with open(filePath, 'w') as fp:
+            fp.write('\r\n')
     else:
         os.makedirs(filePath)
 
     git_add_file(projectPath)
-    return {'result':0,'errmsg':''}
+    return {'result': 0, 'errmsg': ''}
 
 
 def delete_file(filePath, projectPath):
     if not os.path.exists(filePath):
-        return {'result':-1,'errmsg':'no such file'}
+        return {'result': -1, 'errmsg': 'no such file'}
     if os.path.isfile(filePath):
         os.remove(filePath)
     else:
         shutil.rmtree(filePath)
 
     git_add_file(projectPath)
-    return {'result':0,'errmsg':''}
-
+    return {'result': 0, 'errmsg': ''}
 
 
 def init_project(packageName, appName, projectPath, description=''):
     generate_project(packageName, appName, projectPath)
-    create_remote_repo(appName, description)
-    local_repo(appName, projectPath)
-    create_code_build_project(appName)
+    #create_remote_repo(appName, description)
+    #local_repo(appName, projectPath)
+    #create_code_build_project(appName)
 
 
 def main():
@@ -249,9 +266,12 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
+    # main()
     appName = 'helloapp'
     filePath = './helloapp/test'
     content = 'qwe\nqwe\nqweeeeee\n'
     projectPath = os.path.join('./', appName)
-    print(delete_file(filePath, projectPath))
+    # print(delete_file(filePath, projectPath))
+    print(os.getcwd())
+    git_add_file('.')
+    print(os.getcwd())
