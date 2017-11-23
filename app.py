@@ -121,6 +121,15 @@ def get_buildlog():
     # return json.dumps(logEvents)
 
 
+@app.route('/tools/applog', methods=['GET'])
+def get_applog():
+    appName = request.args.get('appName')
+    startTime = int(request.args.get('startTime'))
+    appLogs = Tools.get_applogs(appName, startTime)
+    print(appLogs, flush=True)
+    return json.dumps(appLogs)
+
+
 @app.route('/tools/createProject', methods=['POST'])
 def create_project():
     data = json.loads(request.data)

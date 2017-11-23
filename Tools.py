@@ -6,6 +6,8 @@ import configparser
 import json
 from subprocess import check_output, CalledProcessError, call
 from git import Repo
+from datetime import datetime
+import time
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -15,6 +17,12 @@ ANDROID_TARGET_VERSION = config['DEFAULT']['AndroidTargetVersion']
 TEMP_APP_SRC = config['DEFAULT']['TmpAppSrc']
 CODEBUILD_SERVICE_ROLE = config['AWS']['CodeBuildServiceRole']
 S3_BUCKET = config['AWS']['S3Bucket']
+
+
+def _datetime_from_utc_to_local(utc_datetime):
+    now_timestamp = time.time()
+    offset = datetime.fromtimestamp(now_timestamp) - datetime.utcfromtimestamp(now_timestamp)
+    return utc_datetime + offset
 
 
 def create_code_build_project(appName, description='', *args):
@@ -51,6 +59,15 @@ def build_project(projectName):
     return response['build']['id']
 
 
+def get_app_pid(appName):
+    cmd = ['adb', 'shell', 'ps', '|', 'grep', '-i', appName, '|', 'cut', '-c10-15']
+    ret = _exec_cmd(cmd)
+    if ret[0] == 0:
+        return int(ret[1].decode('utf-8').strip())
+    else:
+        return -1
+
+
 def get_buildlogs(projectId, startTime=0):
     projectName, logStreamName = projectId.split(':')
     logGroupName = '/aws/codebuild/' + projectName
@@ -59,6 +76,19 @@ def get_buildlogs(projectId, startTime=0):
         logGroupName=logGroupName, logStreamName=logStreamName, startTime=startTime)
     print(logEvents)
     return logEvents
+
+
+def get_applogs(appName, startTime=0):
+    pid = get_app_pid(appName)
+    if pid <= 0:
+        return {'lastAppLogTimestamp': startTime, 'appLog': ''}
+    cmd = ['adb', 'logcat', '-t', datetime.fromtimestamp(startTime / 1000).strftime("%m-%d %H:%M:%S.000"), '|', 'grep', str(pid)]
+    print(cmd)
+    ret = _exec_cmd(cmd)
+    ts = round(datetime.timestamp(datetime.now()) * 1000)
+    if ret[0] != 0:
+        return {'lastAppLogTimestamp': startTime, 'appLog': ''}
+    return {'lastAppLogTimestamp': ts, 'appLog': ret[1].decode('utf-8')}
 
 
 def install_apk(projectName, apkPath, androidPath=''):
@@ -255,23 +285,17 @@ def main():
     # build_project('android-build-sdk-base')
     buildId = 'helloapp:1ead4d59-3811-4847-a560-6f1eaea040d0'
     packageName = 'com.rexz'
-    appName = 'helloapp'
+    appName = 'helloapplication'
     projectPath = os.path.join('./', appName)
     # print(build_project(appName))
     # init_project(packageName, appName, projectPath)
     # build_project(appName)
-    get_buildlogs(buildId, 1510031877000)
+    # get_buildlogs(buildId, 1510031877000)
     # install_apk('', '')
     # generate_project(packageName, appName, os.path.join('./', appName))
+    print(get_app_pid(appName))
+    print(get_applogs(appName, 1511456374652))
 
 
 if __name__ == '__main__':
-    # main()
-    appName = 'helloapp'
-    filePath = './helloapp/test'
-    content = 'qwe\nqwe\nqweeeeee\n'
-    projectPath = os.path.join('./', appName)
-    # print(delete_file(filePath, projectPath))
-    print(os.getcwd())
-    git_add_file('.')
-    print(os.getcwd())
+    main()
