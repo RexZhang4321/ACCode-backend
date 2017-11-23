@@ -4,7 +4,7 @@ import os
 import shutil
 import configparser
 import json
-from subprocess import check_output, CalledProcessError, call
+from subprocess import check_output, CalledProcessError, call, Popen, PIPE
 from git import Repo
 from datetime import datetime
 import time
@@ -82,6 +82,7 @@ def get_applogs(appName, startTime=0):
     pid = get_app_pid(appName)
     if pid <= 0:
         return {'lastAppLogTimestamp': startTime, 'appLog': ''}
+<<<<<<< HEAD
     cmd = ['adb', 'logcat', '-t', datetime.fromtimestamp(startTime / 1000).strftime("%m-%d %H:%M:%S.000"), '|', 'grep', str(pid)]
     print(cmd)
     ret = _exec_cmd(cmd)
@@ -92,13 +93,37 @@ def get_applogs(appName, startTime=0):
 
 
 def install_apk(projectName, apkPath, androidPath=''):
+=======
+    ps = Popen(('adb', 'logcat', '-t', datetime.fromtimestamp(startTime / 1000).strftime("%m-%d %H:%M:%S.000")), stdout=PIPE)
+    ps.wait()
+    try:
+        ret = check_output(['grep', '-i', str(pid)], stdin=ps.stdout)
+    except CalledProcessError as e:
+        ret = b''
+    ts = round(datetime.timestamp(datetime.now()) * 1000)
+    return {'lastAppLogTimestamp': ts, 'appLog': ret.decode('utf-8')}
+
+
+def get_apk_name(projectName):
+    return projectName + '-app.apk'
+
+
+def get_apk_s3_path(projectName):
+    return projectName + '/app-debug.apk'
+
+
+def install_apk(projectName, apkPath):
+>>>>>>> add app running log
     # download apk from s3
     s3 = boto3.resource('s3')
+    localApkName = get_apk_name(projectName)
     s3.meta.client.download_file(
-        S3_BUCKET, projectName + '/app-debug.apk', 'app-debug.apk')
-    installCmd = ['adb', 'install', '-r', 'app-debug.apk']
+        S3_BUCKET, apkPath, localApkName)
+    installCmd = ['adb', 'install', '-r', localApkName]
     result = _exec_cmd(installCmd)
     print(result)
+    os.remove(localApkName)
+    return result
 
 
 def _generate_build_gradle(packageName, applicationName, projectPath):
@@ -290,11 +315,20 @@ def main():
     # print(build_project(appName))
     # init_project(packageName, appName, projectPath)
     # build_project(appName)
+<<<<<<< HEAD
     # get_buildlogs(buildId, 1510031877000)
     # install_apk('', '')
     # generate_project(packageName, appName, os.path.join('./', appName))
     print(get_app_pid(appName))
     print(get_applogs(appName, 1511456374652))
+=======
+    # get_buildlogs(buildId, 1511672636133)
+    # install_apk('', '')
+    # generate_project(packageName, appName, os.path.join('./', appName))
+    # print(get_app_pid('helloapp'))
+    print(get_applogs('helloapp', startTime=1511672636133))
+    # install_apk('helloapp', get_apk_s3_path('helloapp'))
+>>>>>>> add app running log
 
 
 if __name__ == '__main__':

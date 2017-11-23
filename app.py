@@ -109,6 +109,7 @@ def build_project():
     projectName = request.args.get('project')
     # buildId = Tools.build_project(projectName)
     buildId = projectName + ':' + str(round(datetime.datetime.utcnow().timestamp() * 1000))
+    # ret = Tools.install_apk(projectName, Tools.get_apk_s3_path(projectName))
     return buildId
 
 
