@@ -82,18 +82,6 @@ def get_applogs(appName, startTime=0):
     pid = get_app_pid(appName)
     if pid <= 0:
         return {'lastAppLogTimestamp': startTime, 'appLog': ''}
-<<<<<<< HEAD
-    cmd = ['adb', 'logcat', '-t', datetime.fromtimestamp(startTime / 1000).strftime("%m-%d %H:%M:%S.000"), '|', 'grep', str(pid)]
-    print(cmd)
-    ret = _exec_cmd(cmd)
-    ts = round(datetime.timestamp(datetime.now()) * 1000)
-    if ret[0] != 0:
-        return {'lastAppLogTimestamp': startTime, 'appLog': ''}
-    return {'lastAppLogTimestamp': ts, 'appLog': ret[1].decode('utf-8')}
-
-
-def install_apk(projectName, apkPath, androidPath=''):
-=======
     ps = Popen(('adb', 'logcat', '-t', datetime.fromtimestamp(startTime / 1000).strftime("%m-%d %H:%M:%S.000")), stdout=PIPE)
     ps.wait()
     try:
@@ -113,7 +101,6 @@ def get_apk_s3_path(projectName):
 
 
 def install_apk(projectName, apkPath):
->>>>>>> add app running log
     # download apk from s3
     s3 = boto3.resource('s3')
     localApkName = get_apk_name(projectName)
@@ -315,20 +302,11 @@ def main():
     # print(build_project(appName))
     # init_project(packageName, appName, projectPath)
     # build_project(appName)
-<<<<<<< HEAD
     # get_buildlogs(buildId, 1510031877000)
     # install_apk('', '')
     # generate_project(packageName, appName, os.path.join('./', appName))
     print(get_app_pid(appName))
-    print(get_applogs(appName, 1511456374652))
-=======
-    # get_buildlogs(buildId, 1511672636133)
-    # install_apk('', '')
-    # generate_project(packageName, appName, os.path.join('./', appName))
-    # print(get_app_pid('helloapp'))
-    print(get_applogs('helloapp', startTime=1511672636133))
-    # install_apk('helloapp', get_apk_s3_path('helloapp'))
->>>>>>> add app running log
+    print(get_applogs(appName, 1511673300091))
 
 
 if __name__ == '__main__':
