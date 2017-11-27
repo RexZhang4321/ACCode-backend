@@ -19,10 +19,10 @@ CODEBUILD_SERVICE_ROLE = config['AWS']['CodeBuildServiceRole']
 S3_BUCKET = config['AWS']['S3Bucket']
 
 
-def _datetime_from_utc_to_local(utc_datetime):
+def _datetime_from_utc_to_local(utc_ts):
     now_timestamp = time.time()
     offset = datetime.fromtimestamp(now_timestamp) - datetime.utcfromtimestamp(now_timestamp)
-    return utc_datetime + offset
+    return int(utc_ts - 18000000)
 
 
 def create_code_build_project(appName, description='', *args):
@@ -79,15 +79,14 @@ def get_buildlogs(projectId, startTime=0):
 
 
 def get_applogs(appName, startTime=0):
+    startTime = _datetime_from_utc_to_local(startTime)
     pid = get_app_pid(appName)
     if pid <= 0:
         return {'lastAppLogTimestamp': startTime, 'appLog': ''}
     ps = Popen(('adb', 'logcat', '-t', datetime.fromtimestamp(startTime / 1000).strftime("%m-%d %H:%M:%S.000")), stdout=PIPE)
-    ps.wait()
-    try:
-        ret = check_output(['grep', '-i', str(pid)], stdin=ps.stdout)
-    except CalledProcessError as e:
-        ret = b''
+    grep = Popen(['grep', '-i', str(pid)], stdin=ps.stdout, stdout=PIPE)
+    print(datetime.fromtimestamp(startTime / 1000).strftime("%m-%d %H:%M:%S.000"))
+    ret = grep.communicate()[0]
     ts = round(datetime.timestamp(datetime.now()) * 1000)
     return {'lastAppLogTimestamp': ts, 'appLog': ret.decode('utf-8')}
 
@@ -106,6 +105,12 @@ def install_apk(projectName, apkPath):
     localApkName = get_apk_name(projectName)
     s3.meta.client.download_file(
         S3_BUCKET, apkPath, localApkName)
+    # remove old one
+    aapt = Popen('aapt dump badging {}'.format(localApkName).split(), stdout=PIPE)
+    grep = Popen('grep package'.split(), stdin=aapt.stdout, stdout=PIPE)
+    cut = Popen(['cut', "-d'", '-f2'], stdin=grep.stdout, stdout=PIPE)
+    pkgName = cut.communicate()[0].decode('utf-8').strip()
+    _exec_cmd('adb uninstall {}'.format(pkgName).split())
     installCmd = ['adb', 'install', '-r', localApkName]
     result = _exec_cmd(installCmd)
     print(result)
@@ -242,6 +247,14 @@ def git_commit(projectPath, description='save changes'):
     repo.index.commit(description)
 
 
+# TODO: fix this!!!
+def git_push(appName, projectPath):
+    remote_path = 'https://git-codecommit.us-east-1.amazonaws.com/v1/repos/' + appName
+    os.chdir(projectPath)
+    ret = _exec_cmd(['git', 'push', remote_path, '--all'])
+    os.chdir(os.path.dirname(__file__))
+
+
 def modify_file(filePath, content, projectPath):
     try:
         with open(filePath, 'w') as f:
@@ -287,9 +300,9 @@ def delete_file(filePath, projectPath):
 
 def init_project(packageName, appName, projectPath, description=''):
     generate_project(packageName, appName, projectPath)
-    #create_remote_repo(appName, description)
-    #local_repo(appName, projectPath)
-    #create_code_build_project(appName)
+    create_remote_repo(appName, description)
+    local_repo(appName, projectPath)
+    create_code_build_project(appName)
 
 
 def main():
@@ -297,7 +310,7 @@ def main():
     # build_project('android-build-sdk-base')
     buildId = 'helloapp:1ead4d59-3811-4847-a560-6f1eaea040d0'
     packageName = 'com.rexz'
-    appName = 'helloapplication'
+    appName = 'testapp'
     projectPath = os.path.join('./', appName)
     # print(build_project(appName))
     # init_project(packageName, appName, projectPath)
@@ -305,8 +318,9 @@ def main():
     # get_buildlogs(buildId, 1510031877000)
     # install_apk('', '')
     # generate_project(packageName, appName, os.path.join('./', appName))
-    print(get_app_pid(appName))
-    print(get_applogs(appName, 1511673300091))
+    # print(get_app_pid(appName))
+    # print(get_applogs(appName, 1511661132057))
+    install_apk(appName, appName + '/app-debug.apk')
 
 
 if __name__ == '__main__':

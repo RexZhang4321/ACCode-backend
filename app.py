@@ -10,7 +10,7 @@ import configparser
 
 app = Flask(__name__)
 CORS(app)
-red = redis.StrictRedis()
+red = redis.StrictRedis(host='flask-sse.mm0dvv.0001.use1.cache.amazonaws.com')
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -107,9 +107,10 @@ def delete_file():
 @app.route("/tools/build", methods=['GET'])
 def build_project():
     projectName = request.args.get('project')
-    # buildId = Tools.build_project(projectName)
-    buildId = projectName + ':' + str(round(datetime.datetime.utcnow().timestamp() * 1000))
-    # ret = Tools.install_apk(projectName, Tools.get_apk_s3_path(projectName))
+    Tools.git_commit(get_project_dir(projectName))
+    Tools.git_push(projectName, get_project_dir(projectName))
+    buildId = Tools.build_project(projectName)
+    # buildId = projectName + ':' + str(round(datetime.datetime.utcnow().timestamp() * 1000))
     return buildId
 
 
@@ -117,9 +118,9 @@ def build_project():
 def get_buildlog():
     buildId = request.args.get('buildId')
     startTime = int(request.args.get('startTime'))
-    # logEvents = Tools.get_buildlogs(buildId, startTime)
-    return json.dumps({'time': round(datetime.datetime.utcnow().timestamp() * 1000)})
-    # return json.dumps(logEvents)
+    logEvents = Tools.get_buildlogs(buildId, startTime)
+    # return json.dumps({'time': round(datetime.datetime.utcnow().timestamp() * 1000)})
+    return json.dumps(logEvents)
 
 
 @app.route('/tools/applog', methods=['GET'])
@@ -162,7 +163,10 @@ def subscribe_server():
 
 @app.route('/push', methods=['POST'])
 def push_to_client():
+    print('asd')
     data = request.get_json()
+    if data['action'] == 'build-finished':
+        Tools.install_apk(data['project'], data['data'])
     red.publish(data['project'], json.dumps(data))
     return json.dumps(data)
 
