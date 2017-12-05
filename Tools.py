@@ -319,8 +319,8 @@ def main():
     # install_apk('', '')
     # generate_project(packageName, appName, os.path.join('./', appName))
     # print(get_app_pid(appName))
-    # print(get_applogs(appName, 1511661132057))
-    install_apk(appName, appName + '/app-debug.apk')
+    print(get_applogs(appName, 1511661132057))
+    # install_apk(appName, appName + '/app-debug.apk')
 
 
 if __name__ == '__main__':

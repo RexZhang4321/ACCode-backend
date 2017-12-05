@@ -23,6 +23,8 @@ def list_directory_recursive(path):
 
         if 'node_modules' in dirnames:
             dirnames.remove('node_modules')
+        elif '.git' in dirnames:
+            dirnames.remove('.git')
 
     return tmpDirs[path]
 
